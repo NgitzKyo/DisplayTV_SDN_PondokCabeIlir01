@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Signage Sekolah</title>
+    <style>
+        /* Reset dasar */
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: #000;
+            overflow: hidden;
+            cursor: none; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        /* Container Slideshow */
+        #slideshow-container {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+        }
+
+        .slide {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            object-fit: cover;
+            opacity: 0;
+            transition: opacity 2s ease-in-out;
+            z-index: 1;
+        }
+
+        .slide.active {
+            opacity: 1;
+            z-index: 2;
+        }
+
+        /* Loading Screen */
+        #loading {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            color: white; font-size: 24px; z-index: 10;
+        }
+
+        /* =========================================
+           STYLING OVERLAY (HEADER & FOOTER)
+           ========================================= */
+        
+        /* Header: Logo dan Jam */
+        #overlay-header {
+            position: absolute;
+            top: 0; left: 0; width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 30px 50px;
+            box-sizing: border-box;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0) 100%);
+            z-index: 10;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+
+        .header-kiri {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .logo-sekolah {
+            height: 130px; /* Ukuran Logo */
+            width: auto;
+        }
+
+        .nama-sekolah {
+            font-size: 50px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            margin: 0;
+            line-height: 1.2;
+        }
+        
+        .sub-nama {
+            font-size: 30px;
+            font-weight: normal;
+            margin: 0;
+            color: #ddd;
+        }
+
+        .header-kanan {
+            text-align: right;
+        }
+
+        #jam {
+            font-size: 64px;
+            font-weight: bold;
+            line-height: 1;
+            letter-spacing: 2px;
+        }
+
+        #tanggal {
+            font-size: 22px;
+            margin-top: 5px;
+            color: #eee;
+        }
+
+        /* Footer: Running Text */
+        #overlay-footer {
+            position: absolute;
+            bottom: 0; left: 0; width: 100%;
+            background-color: rgba(0, 0, 0, 0.75);
+            color: white;
+            z-index: 10;
+            padding: 15px 0;
+            font-size: 28px;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.5);
+        }
+
+        .label-info {
+            background-color: #d32f2f; /* Warna merah untuk label info */
+            padding: 15px 30px;
+            font-weight: bold;
+            z-index: 11;
+            position: relative;
+        }
+
+        .marquee-container {
+            flex-grow: 1;
+            overflow: hidden;
+            white-space: nowrap;
+            position: relative;
+        }
+
+        .marquee-text {
+            display: inline-block;
+            padding-left: 100%;
+            /* Kecepatan running text diatur di 30s. Ubah angka 30s jika ingin lebih cepat/lambat */
+            animation: marquee 30s linear infinite; 
+        }
+
+        @keyframes marquee {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-100%); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="loading">Memuat daftar gambar dari Google Drive...</div>
+    
+    <!-- Slideshow Background -->
+    <div id="slideshow-container">
+        <img id="layer1" class="slide active" src="" alt="Slide 1">
+        <img id="layer2" class="slide" src="" alt="Slide 2">
+    </div>
+
+    <!-- Overlay Header -->
+    <div id="overlay-header">
+        <div class="header-kiri">
+            <!-- Ganti src di bawah ini dengan URL logo sekolah (bisa dari Drive atau web lain) -->
+            <img src="logo-sekolah1.png" alt="Logo Sekolah" class="logo-sekolah">
+            <div>
+                <p class="nama-sekolah">SMP YAPERMAS</p>
+                <p class="sub-nama">Cerdas, Berprestasi, Berakhlak Mulia</p>
+            </div>
+        </div>
+        <div class="header-kanan">
+            <div id="jam">00:00:00</div>
+            <div id="tanggal">Memuat tanggal...</div>
+        </div>
+    </div>
+
+    <!-- Overlay Footer (Running Text) -->
+    <div id="overlay-footer">
+        <div class="label-info">INFO</div>
+        <div class="marquee-container">
+            <div class="marquee-text">
+                <!-- Ganti teks pengumuman di bawah ini -->
+                Selamat datang di SDN Contoh 01. | Mari bersama menjaga kebersihan dan ketertiban lingkungan sekolah. | Selamat belajar dan raihlah cita-citamu!
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // KONFIGURASI API
+        // ==========================================
+        const API_KEY = 'AIzaSyD4zUJ93KfIYByvpXldhH0FD4Tk7NFwMIY';
+        const FOLDER_ID = '1SiqnXNMBh0uFXGLoTrE3Vzh_RP1eg5Rq'; 
+        
+        const WAKTU_TAMPIL_SLIDE = 60000; // 60.000 ms = 1 menit
+        const CEK_GAMBAR_BARU = 60000;    // 60.000 ms = 1 menit (Cek Drive berkala)
+
+        // ==========================================
+        // LOGIKA SLIDESHOW & GOOGLE DRIVE
+        // ==========================================
+        let daftarGambar = [];
+        let indexSekarang = 0;
+        let layerAktif = 1; 
+
+        async function fetchGambarDrive() {
+            try {
+                const query = `'${FOLDER_ID}'+in+parents+and+mimeType+contains+'image/'`;
+                const url = `https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,mimeType,thumbnailLink)&orderBy=createdTime+desc&key=${API_KEY}`;
+                
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (data.files && data.files.length > 0) {
+                    let gambarBaru = [];
+                    data.files.forEach(file => {
+                        if(file.thumbnailLink) {
+                            const highResUrl = file.thumbnailLink.replace('=s220', '=w1920-h1080');
+                            gambarBaru.push(highResUrl);
+                        }
+                    });
+
+                    if (gambarBaru.length > 0) {
+                        daftarGambar = gambarBaru;
+                        document.getElementById('loading').style.display = 'none';
+                    }
+                }
+            } catch (error) {
+                console.error("Gagal mengambil data dari Google Drive:", error);
+            }
+        }
+
+        function gantiSlide() {
+            if (daftarGambar.length === 0) return;
+
+            const layer1 = document.getElementById('layer1');
+            const layer2 = document.getElementById('layer2');
+
+            indexSekarang = (indexSekarang + 1) % daftarGambar.length;
+            const urlGambarSelanjutnya = daftarGambar[indexSekarang];
+
+            if (layerAktif === 1) {
+                layer2.src = urlGambarSelanjutnya;
+                layer2.onload = () => {
+                    layer2.classList.add('active');
+                    layer1.classList.remove('active');
+                    layerAktif = 2;
+                };
+            } else {
+                layer1.src = urlGambarSelanjutnya;
+                layer1.onload = () => {
+                    layer1.classList.add('active');
+                    layer2.classList.remove('active');
+                    layerAktif = 1;
+                };
+            }
+        }
+
+        // ==========================================
+        // LOGIKA JAM & TANGGAL REAL-TIME
+        // ==========================================
+        function updateJam() {
+            const sekarang = new Date();
+            
+            // Format Waktu (Contoh: 14:05:09)
+            const opsiWaktu = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
+            document.getElementById('jam').textContent = sekarang.toLocaleTimeString('id-ID', opsiWaktu).replace(/\./g, ':');
+
+            // Format Tanggal (Contoh: Jumat, 28 Agustus 2026)
+            const opsiTanggal = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            document.getElementById('tanggal').textContent = sekarang.toLocaleDateString('id-ID', opsiTanggal);
+        }
+
+        // ==========================================
+        // INISIALISASI SISTEM
+        // ==========================================
+        async function mulaiSistem() {
+            // Jalankan jam pertama kali, lalu update setiap 1 detik
+            updateJam();
+            setInterval(updateJam, 1000);
+
+            // Fetch gambar pertama kali
+            await fetchGambarDrive();
+            
+            if (daftarGambar.length > 0) {
+                document.getElementById('layer1').src = daftarGambar[0];
+            }
+
+            // Mulai interval slideshow & polling Drive
+            setInterval(gantiSlide, WAKTU_TAMPIL_SLIDE);
+            setInterval(fetchGambarDrive, CEK_GAMBAR_BARU);
+        }
+
+        window.onload = mulaiSistem;
+    </script>
+</body>
+</html>
